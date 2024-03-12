@@ -68,7 +68,7 @@ const login = async (req, res) => {
 const handleRefreshToken = async (req, res) => {
   const refreshToken = req.cookies["refreshToken"];
   if (!refreshToken) {
-    res.status(401).send("Access Denied. No refresh token provided");
+    res.status(401).send("Access Denied.. No refresh token provided");
   }
   try {
     let user = await User.findOne({ refreshToken });
@@ -94,14 +94,14 @@ const handleRefreshToken = async (req, res) => {
 const logout = async (req, res) => {
   const refreshToken = req.cookies["refreshToken"];
   if (!refreshToken) {
-    res.status(401).send("Access Denied. No refresh token provided");
+    res.status(401).send("Access Denied.. No refresh token provided");
   }
   try {
     await User.findOneAndUpdate({ refreshToken }, { refreshToken: " " });
     res.clearCookie("refreshToken", { httpOnly: true, secure: true });
     res.sendStatus(204);
   } catch (err) {
-    res.status(400).send("Bad Request");
+    res.status(400).send("User not logged out");
   }
 };
 
@@ -111,7 +111,7 @@ const getUsers = async (req, res) => {
     const users = await User.find();
     res.status(200).json(users);
   } catch (err) {
-    console.log(err);
+    res.status(404).send("Users not found");
   }
 };
 
@@ -119,12 +119,9 @@ const getUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(400).send("User not found");
-    }
     res.status(200).json(user);
   } catch (err) {
-    console.log(err);
+    res.status(404).send("User not found");
   }
 };
 
@@ -135,7 +132,7 @@ const updateUser = async (req, res) => {
       returnOriginal: false,
     });
     if (!user) {
-      return res.status(400).send("User not found");
+      return res.status(404).send("User not found");
     }
     res.status(200).send(user);
   } catch (err) {
@@ -148,7 +145,7 @@ const deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {
-      return res.status(400).send("User not found");
+      return res.status(404).send("User not found");
     }
     res.status(200).send("User Deleted");
   } catch (err) {
@@ -167,7 +164,7 @@ const blockUser = async (req, res) => {
       }
     );
     if (!user) {
-      return res.status(400).send("User not found");
+      return res.status(404).send("User not found");
     }
     res.status(200).send("User is blocked");
   } catch (err) {
@@ -186,7 +183,7 @@ const unBlockUser = async (req, res) => {
       }
     );
     if (!user) {
-      return res.status(400).send("User not found");
+      return res.status(404).send("User not found");
     }
     res.status(200).send("User is unblocked");
   } catch (err) {
