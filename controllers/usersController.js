@@ -1,6 +1,7 @@
 const User = require("../models/usersModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const sendMail = require("./emailController");
 
 // Register
 const createUser = async (req, res) => {
@@ -74,7 +75,7 @@ const handleRefreshToken = async (req, res) => {
     let user = await User.findOne({ refreshToken });
     const decodedToken = jwt.verify(
       refreshToken,
-      process.env.JWT_SCRET_REF_TOKEN
+      process.env.JWT_SECRET_REF_TOKEN
     );
     if (user.email != decodedToken.email) {
       return res.status(400).send("Refresh token not matched");
@@ -140,6 +141,28 @@ const updateUser = async (req, res) => {
   }
 };
 
+// Update Password
+const updatePassword = async (req, res) => {
+  try {
+    let user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).send("User not found");
+    }
+    if (!req.body.password) {
+      return res.status(400).send("Password can't be updated");
+    }
+    user.password = req.body.password;
+    await user.save();
+    res.status(200).json({
+      email: user.email,
+      password: user.password,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).send("User not found");
+  }
+};
+
 // Delete a user
 const deleteUser = async (req, res) => {
   try {
@@ -191,6 +214,44 @@ const unBlockUser = async (req, res) => {
   }
 };
 
+// Forgot Password
+const forgotPassword = async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    return res.status(404).send("User Not Found");
+  }
+  try {
+    const token = await user.createPasswordResetToken();
+    await user.save();
+    const data = {
+      to: user.email,
+      subject: "Forgot Password Reset Link",
+      text: "Hey User",
+      html: `Hi, Please follow this link to reset your password, This link is valid for 30 minutes, <a href="http://localhost:8080/api/users/abc/${token}">Click Here</a>`,
+    };
+    sendMail(data);
+    res.status(200).send(token);
+  } catch (err) {
+    res.status(400).send("Can't send reset link");
+  }
+};
+
+// Reset the password
+const resetPassword = async (req, res) => {
+  try {
+    let user = await User.findOne({ email: req.user.email });
+    user.password = req.body.password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.passwordChangedAt = Date.now();
+    await user.save();
+    res.status(200).send(user);
+  } catch (err) {
+    console.log(err);
+    res.status(404).send("User Not found");
+  }
+};
+
 module.exports = {
   createUser,
   login,
@@ -202,4 +263,7 @@ module.exports = {
   unBlockUser,
   handleRefreshToken,
   logout,
+  updatePassword,
+  forgotPassword,
+  resetPassword,
 };

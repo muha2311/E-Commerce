@@ -1,7 +1,5 @@
-const { query } = require("express");
 const Product = require("../models/productsModel");
 const slugify = require("slugify");
-const match = require("nodemon/lib/monitor/match");
 
 // Create a product
 const createProduct = async (req, res) => {
@@ -21,7 +19,8 @@ const createProduct = async (req, res) => {
 // Get all products
 const getProducts = async (req, res) => {
   try {
-    // Filtering
+    // Filtering -->> price[gte]=100 in the url request
+
     const queryObj = { ...req.query };
     const excludeFields = ["page", "sort", "limit", "fields"];
     excludeFields.forEach((el) => {
@@ -31,12 +30,48 @@ const getProducts = async (req, res) => {
     queryStr = JSON.parse(
       queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`)
     );
-    const query = await Product.find(queryStr);
 
-    // Sorting
+    let query = Product.find(queryStr);
 
-    res.status(200).send(query);
+    // Sorting -->> sort=category,desc  ===== default is ascending
+
+    let page = parseInt(req.query.page) - 1 || 0;
+    let limit = parseInt(req.query.limit) || 5;
+    let sort = req.query.sort || "createdAt";
+
+    req.query.sort ? (sort = req.query.sort.split(",")) : (sort = [sort]);
+
+    let sortBy = {};
+
+    if (sort[1]) {
+      sortBy[sort[0]] = sort[1] === "desc" ? -1 : 1;
+    } else {
+      sortBy[sort[0]] = 1;
+    }
+
+    // Limiting Fields
+
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      query = query.select(fields);
+    } else {
+      query.select("-__v");
+    }
+
+    let product = await query
+      .sort(sortBy)
+      .skip(page * limit)
+      .limit(limit);
+
+    const response = {
+      page: page + 1,
+      limit: limit,
+      product,
+    };
+
+    res.status(200).json(response);
   } catch (err) {
+    console.log(err);
     res.status(400).send("Can't get products");
   }
 };

@@ -6,7 +6,7 @@ const tokenMW = async (req, res, next) => {
   if (req.headers.authorization?.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
     try {
-      const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+      const decodedToken = jwt.verify(token, process.env.JWT_ACCESS_TOKEN);
       req.user = await User.findOne({ email: decodedToken.email }).exec();
       next();
     } catch (err) {
@@ -26,7 +26,20 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
+const forgotPassToken = async (req, res, next) => {
+  let token = req.params.token;
+  try {
+    const decodedToken = jwt.verify(token, process.env.JWT_FORGOT_PASS_TOKEN);
+    req.user = await User.findOne({ email: decodedToken.email }).exec();
+    next();
+  } catch (err) {
+    console.log(err);
+    res.status(401).send("Token Expired.. Please Try Again");
+  }
+};
+
 module.exports = {
   tokenMW,
   isAdmin,
+  forgotPassToken,
 };
